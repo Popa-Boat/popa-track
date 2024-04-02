@@ -62,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -273,11 +274,11 @@ public class ReportUtils {
     private boolean isMoving(List<Position> positions, int index, TripsConfig tripsConfig) {
         if (tripsConfig.getMinimalNoDataDuration() > 0) {
             boolean beforeGap = index < positions.size() - 1
-                    && positions.get(index + 1).getFixTime().getTime() - positions.get(index).getFixTime().getTime()
-                    >= tripsConfig.getMinimalNoDataDuration();
+                    && positions.get(index + 1).getFixTime().getTime()
+                            - positions.get(index).getFixTime().getTime() >= tripsConfig.getMinimalNoDataDuration();
             boolean afterGap = index > 0
-                    && positions.get(index).getFixTime().getTime() - positions.get(index - 1).getFixTime().getTime()
-                    >= tripsConfig.getMinimalNoDataDuration();
+                    && positions.get(index).getFixTime().getTime()
+                            - positions.get(index - 1).getFixTime().getTime() >= tripsConfig.getMinimalNoDataDuration();
             if (beforeGap || afterGap) {
                 return false;
             }
@@ -307,7 +308,6 @@ public class ReportUtils {
         var positions = PositionUtil.getPositions(storage, device.getId(), from, to);
         if (!positions.isEmpty()) {
             boolean trips = reportClass.equals(TripReportItem.class);
-
             MotionState motionState = new MotionState();
             boolean initialValue = isMoving(positions, 0, tripsConfig);
             motionState.setMotionStreak(initialValue);
@@ -315,26 +315,39 @@ public class ReportUtils {
 
             boolean detected = trips == motionState.getMotionState();
             double maxSpeed = 0;
-            int startEventIndex = detected ? 0 : -1;
+            int startEventIndex = detected && positions.get(0).getGeofenceIds() == null ? 0 : -1;
             int startNoEventIndex = -1;
+            boolean moving = detected && positions.get(0).getGeofenceIds() == null;
+            boolean stopped = false;
             for (int i = 0; i < positions.size(); i++) {
                 boolean motion = isMoving(positions, i, tripsConfig);
                 if (motionState.getMotionState() != motion) {
                     if (motion == trips) {
                         if (!detected) {
-                            startEventIndex = i;
+                            // startEventIndex = i;
+                            moving = true;
+                            stopped = false;
                             maxSpeed = positions.get(i).getSpeed();
                         }
-                        startNoEventIndex = -1;
+                        // startNoEventIndex = -1;
                     } else {
-                        startNoEventIndex = i;
+                        stopped = true;
+                        moving = false;
+                        // startNoEventIndex = i;
                     }
                 } else {
                     maxSpeed = Math.max(maxSpeed, positions.get(i).getSpeed());
                 }
-
+                if (moving && positions.get(i).getGeofenceIds() == null) {
+                    startEventIndex = i;
+                    moving = false;
+                }
+                if (stopped && positions.get(i).getGeofenceIds() != null) {
+                    startNoEventIndex = i;
+                    stopped = false;
+                }
                 MotionProcessor.updateState(motionState, positions.get(i), motion, tripsConfig);
-                if (motionState.getEvent() != null) {
+                if (motionState.getEvent() != null || (startEventIndex >= 0 && startNoEventIndex >= 0)) {
                     if (motion == trips) {
                         detected = true;
                         startNoEventIndex = -1;

@@ -46,7 +46,6 @@ import org.traccar.forward.PositionForwarderAmqp;
 import org.traccar.forward.PositionForwarderKafka;
 import org.traccar.forward.PositionForwarderRedis;
 import org.traccar.forward.PositionForwarderUrl;
-import org.traccar.forward.PositionForwarderMqtt;
 import org.traccar.geocoder.AddressFormat;
 import org.traccar.geocoder.BanGeocoder;
 import org.traccar.geocoder.BingMapsGeocoder;
@@ -70,14 +69,12 @@ import org.traccar.geocoder.TestGeocoder;
 import org.traccar.geocoder.TomTomGeocoder;
 import org.traccar.geolocation.GeolocationProvider;
 import org.traccar.geolocation.GoogleGeolocationProvider;
+import org.traccar.geolocation.MozillaGeolocationProvider;
 import org.traccar.geolocation.OpenCellIdGeolocationProvider;
 import org.traccar.geolocation.UnwiredGeolocationProvider;
-import org.traccar.handler.CopyAttributesHandler;
-import org.traccar.handler.FilterHandler;
 import org.traccar.handler.GeocoderHandler;
 import org.traccar.handler.GeolocationHandler;
 import org.traccar.handler.SpeedLimitHandler;
-import org.traccar.handler.TimeHandler;
 import org.traccar.helper.ObjectMapperContextResolver;
 import org.traccar.helper.SanitizerModule;
 import org.traccar.helper.WebHelper;
@@ -279,16 +276,18 @@ public class MainModule extends AbstractModule {
     @Provides
     public static GeolocationProvider provideGeolocationProvider(Config config, Client client) {
         if (config.getBoolean(Keys.GEOLOCATION_ENABLE)) {
-            String type = config.getString(Keys.GEOLOCATION_TYPE, "google");
+            String type = config.getString(Keys.GEOLOCATION_TYPE, "mozilla");
             String url = config.getString(Keys.GEOLOCATION_URL);
             String key = config.getString(Keys.GEOLOCATION_KEY);
             switch (type) {
+                case "google":
+                    return new GoogleGeolocationProvider(client, key);
                 case "opencellid":
                     return new OpenCellIdGeolocationProvider(client, url, key);
                 case "unwired":
                     return new UnwiredGeolocationProvider(client, url, key);
                 default:
-                    return new GoogleGeolocationProvider(client, key);
+                    return new MozillaGeolocationProvider(client, key);
             }
         }
         return null;
@@ -341,34 +340,6 @@ public class MainModule extends AbstractModule {
 
     @Singleton
     @Provides
-    public static CopyAttributesHandler provideCopyAttributesHandler(Config config, CacheManager cacheManager) {
-        if (config.getBoolean(Keys.PROCESSING_COPY_ATTRIBUTES_ENABLE)) {
-            return new CopyAttributesHandler(config, cacheManager);
-        }
-        return null;
-    }
-
-    @Singleton
-    @Provides
-    public static FilterHandler provideFilterHandler(
-            Config config, CacheManager cacheManager, Storage storage, StatisticsManager statisticsManager) {
-        if (config.getBoolean(Keys.FILTER_ENABLE)) {
-            return new FilterHandler(config, cacheManager, storage, statisticsManager);
-        }
-        return null;
-    }
-
-    @Singleton
-    @Provides
-    public static TimeHandler provideTimeHandler(Config config) {
-        if (config.hasKey(Keys.TIME_OVERRIDE)) {
-            return new TimeHandler(config);
-        }
-        return null;
-    }
-
-    @Singleton
-    @Provides
     public static BroadcastService provideBroadcastService(
             Config config, ObjectMapper objectMapper) throws IOException {
         if (config.hasKey(Keys.BROADCAST_TYPE)) {
@@ -415,8 +386,6 @@ public class MainModule extends AbstractModule {
                     return new PositionForwarderAmqp(config, objectMapper);
                 case "kafka":
                     return new PositionForwarderKafka(config, objectMapper);
-                case "mqtt":
-                    return new PositionForwarderMqtt(config, objectMapper);
                 case "redis":
                     return new PositionForwarderRedis(config, objectMapper);
                 case "url":
