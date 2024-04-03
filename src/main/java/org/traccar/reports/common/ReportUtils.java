@@ -296,6 +296,9 @@ public class ReportUtils {
             return slowTripsAndStops(device, from, to, reportClass);
         }
     }
+    // code to detect when device left geofence and when it entered geofence with
+    // the help of geofence id
+    // and time of trip must be longer than set in config
 
     public <T extends BaseReportItem> List<T> slowTripsAndStops(
             Device device, Date from, Date to, Class<T> reportClass) throws StorageException {
@@ -372,6 +375,8 @@ public class ReportUtils {
         return result;
     }
 
+    // same logic as above but using less data to optimize the process use event of
+    // device leaving and entering geofence
     public <T extends BaseReportItem> List<T> fastTripsAndStops(
             Device device, Date from, Date to, Class<T> reportClass) throws StorageException {
 
