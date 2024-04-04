@@ -320,38 +320,36 @@ public class ReportUtils {
             double maxSpeed = 0;
             int startEventIndex = detected && positions.get(0).getGeofenceIds() == null ? 0 : -1;
             int startNoEventIndex = -1;
-            boolean moving = detected && positions.get(0).getGeofenceIds() == null;
-            boolean stopped = false;
+            boolean mymotion = detected && positions.get(0).getGeofenceIds() == null;
             for (int i = 0; i < positions.size(); i++) {
                 boolean motion = isMoving(positions, i, tripsConfig);
                 if (motionState.getMotionState() != motion) {
                     if (motion == trips) {
                         if (!detected) {
                             // startEventIndex = i;
-                            moving = true;
-                            stopped = false;
+                            mymotion = true;
                             maxSpeed = positions.get(i).getSpeed();
                         }
                         // startNoEventIndex = -1;
                     } else {
-                        stopped = true;
-                        moving = false;
+                        mymotion = false;
                         // startNoEventIndex = i;
                     }
                 } else {
                     maxSpeed = Math.max(maxSpeed, positions.get(i).getSpeed());
                 }
-                if (moving && positions.get(i).getGeofenceIds() == null) {
+                if (mymotion && positions.get(i).getGeofenceIds() == null) {
                     startEventIndex = i;
-                    moving = false;
+                    MotionProcessor.updateState(motionState, positions.get(i), mymotion, tripsConfig);
                 }
-                if (stopped && positions.get(i).getGeofenceIds() != null) {
+                if (!mymotion && positions.get(i).getGeofenceIds() != null) {
                     startNoEventIndex = i;
-                    stopped = false;
+                    MotionProcessor.updateState(motionState, positions.get(i), mymotion, tripsConfig);
                 }
-                MotionProcessor.updateState(motionState, positions.get(i), motion, tripsConfig);
-                if (motionState.getEvent() != null || (startEventIndex >= 0 && startNoEventIndex >= 0)) {
-                    if (motion == trips) {
+                // MotionProcessor.updateState(motionState, positions.get(i), motion,
+                // tripsConfig);
+                if (motionState.getEvent() != null) {
+                    if (mymotion == trips) {
                         detected = true;
                         startNoEventIndex = -1;
                     } else if (startEventIndex >= 0 && startNoEventIndex >= 0) {
