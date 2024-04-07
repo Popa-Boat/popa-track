@@ -44,7 +44,7 @@ public final class MotionProcessor {
                 boolean generateEvent = false;
                 if (newState) {
                     if (newTime - oldTime >= tripsConfig.getMinimalTripDuration()
-                            || distance >= tripsConfig.getMinimalTripDistance()) {
+                            && distance >= tripsConfig.getMinimalTripDistance()) {
                         generateEvent = true;
                     }
                 } else {

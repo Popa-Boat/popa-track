@@ -318,34 +318,39 @@ public class ReportUtils {
 
             boolean detected = trips == motionState.getMotionState();
             double maxSpeed = 0;
-            int startEventIndex = detected && positions.get(0).getGeofenceIds() == null ? 0 : -1;
+            int startEventIndex = detected && trips && positions.get(0).getGeofenceIds() == null ? 0 : -1;
             int startNoEventIndex = -1;
-            boolean mymotion = detected && positions.get(0).getGeofenceIds() == null;
+            boolean mymotion = detected && trips && positions.get(0).getGeofenceIds() == null;
             for (int i = 0; i < positions.size(); i++) {
                 boolean motion = isMoving(positions, i, tripsConfig);
-                if (motionState.getMotionState() != motion) {
+                if (motionState.getMotionState() != mymotion) {
                     if (motion == trips) {
-                        if (!detected) {
-                            // startEventIndex = i;
-                            mymotion = true;
-                            maxSpeed = positions.get(i).getSpeed();
-                        }
-                        // startNoEventIndex = -1;
+                        mymotion = true;
+                        maxSpeed = positions.get(i).getSpeed();
                     } else {
                         mymotion = false;
-                        // startNoEventIndex = i;
                     }
                 } else {
                     maxSpeed = Math.max(maxSpeed, positions.get(i).getSpeed());
                 }
-                if (mymotion && positions.get(i).getGeofenceIds() == null) {
-                    startEventIndex = i;
-                    MotionProcessor.updateState(motionState, positions.get(i), mymotion, tripsConfig);
+                if (mymotion) {
+                    if (positions.get(i).getGeofenceIds() == null) {
+                        if (!detected) {
+                            startEventIndex = i;
+                        }
+                        startNoEventIndex = -1;
+                    } else {
+                        mymotion = false;
+                    }
+                } else {
+                    if (positions.get(i).getGeofenceIds() != null) {
+                        startNoEventIndex = i;
+                    } else {
+                        mymotion = true;
+                    }
                 }
-                if (!mymotion && positions.get(i).getGeofenceIds() != null) {
-                    startNoEventIndex = i;
-                    MotionProcessor.updateState(motionState, positions.get(i), mymotion, tripsConfig);
-                }
+
+                MotionProcessor.updateState(motionState, positions.get(i), mymotion, tripsConfig);
                 // MotionProcessor.updateState(motionState, positions.get(i), motion,
                 // tripsConfig);
                 if (motionState.getEvent() != null) {
